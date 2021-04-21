@@ -1,11 +1,18 @@
 Package: rwetools
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Repository of tools for standardizing real world evidence reporting
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Authors@R: as.person(c("Paul Spin <pauljspin@gmail.com> [aut, cre]"))
+Description: TBD
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+Imports: 
+    dplyr
+Remotes: 
+  jackwasey/icd
+Author: 
+  Paul Spin [aut, cre]
+Maintainer: 
+  "Paul Spin <pauljspin@gmail.com>
+RoxygenNote: 7.1.1
