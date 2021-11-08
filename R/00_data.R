@@ -64,3 +64,17 @@
 "gem_9_to_10"
 
 
+#' Simulated patient dataset with observed ICD10CM codes
+#'#'
+#'
+#' @format A data frame
+#' \describe{
+#'   \item{id}{Unique patient identifier.}
+#'   \item{code}{ICD10CM code.}
+
+#'   ...
+#' }
+
+"sim_icd10_pat"
+
+
