@@ -6,7 +6,8 @@
 
 # Brief purpose of code:
 
-#  [ Text]
+#  Create subject-level demographic covariates for each patient
+#  in target population
 
 # Code author: [ENTER NAME]
 # Lead analyst: [ENTER NAME]
@@ -74,13 +75,25 @@ library(haven) # Library for opening SAS, Stata, SPSS files
 library(lubridate) # Wrangling dates in R
 
 
-
 # 1.2 Custom functions -------------------------------------------------------
 rfuns <- list.files("R/")
 lapply(rfuns, function(x) source(paste0("R/",x))) # Loads functions to memory
 
 
 # 1.3. Load data dependencies ------------------------------------------------
+
+# Load all data sources required to derive fields of interest
+
+# Note that this file must load a data file into memory. The data file must be stored as
+# a data.frame or tibble  named study_dat
+
+# If the cohort size is too large to store in memory (this is rare) then see
+# Paul Spin or Paul Ekwardu for further guidance.
+
+# Failure to load a data file with this name result in an error warning being issued when
+# running the script and you will be forced to terminate the code run
+
+
 # read.csv()          # Read CSV file
 # read_excel()        # Read both xls and xlsx files and detects the format from the extension.
 # read_sheets()       # Read worksheets of xls or xlsx file
@@ -88,80 +101,133 @@ lapply(rfuns, function(x) source(paste0("R/",x))) # Loads functions to memory
 # haven::read_xpt()   # Load XPT file
 # load()              # Load R data files
 
+# 1.4. Check for study level variable ----------------------------------------
+if(exists("study_dat")==FALSE) {
+  stop("study_dat is not stored in memory. Your study-level variables may
+       be stored under a different name. If so, please assign it to an object
+       named study_dat")
+}
+
+# 1.5 Extract unique subject ID and index date -------------------------------
+# Each covariate will be defined and added to this data set iteratively.
+# The resulting datasets will be merged and then added to the study-level
+# dataset
+
+# Example
+# If you have two covariates (sex, age), then two temporary data files
+# will be created, one for each covariate. Once complete, these two files
+# will be merged together, and the resulting merged file will itself
+# be merged into the study-level file.
+
+dat <- study_dat %>%
+  dplyr::select(usubjid, index_date)
 
 
 #--------------------------------------------------------------------------- -
 #--------------------------------------------------------------------------- -
-# 2. COHORT IDENTIFICATION  --------------------------------------------------
+# 2. Demographics           --------------------------------------------------
 #--------------------------------------------------------------------------- -
 #--------------------------------------------------------------------------- -
 
-# 2.1. Study Level File  -----------------------------------------------------
+# Common variables
+# [1] Age at index. Requires date of birth and index date
+# --> 2 variables:
+#     - Numeric - integer in years
+# --> Age categories at index. Requires age at index
+# --> Variable cut points (adapt as needed)
+# --> <18 years, 18-25 years, 25-34 years, 35-44 years, 45-54 years,
+#     55-64 years, 65-74 years, 75+ years
+# --> 2 variables:
+#     - Factor
+#     - Character
+# [2] Sex. Converted to one binary variable: Female (1 = Female; 0 = Male)
+# --> 3  variables:
+#     - Numeric - integer
+#       - binary variable: Female (1 = Female; 0 = Male)
+#     - Factor
+#     - Character
+# [3] Geography (Alberta)
+# --> 2 variables:
+#     - Factor
+#     - Character
+# [4] [OTHER - specify]
 
-# Key fields
-# [1] Subject ID
-# [2] Create Indicator Variables for Each Inclusion/Exclusion Criteria
-#     to denote whether patient satisfies a given criteria
-# [3] Subgroup or population of interest flags
+
+# 2.1. Bespoke functions  -----------------------------------------------------
+# Convert character variable to factor variable
+bespoke_char_to_factor <- function(x){
+  if(class(x)=="character") {
+    x <- factor(x)
+  }
+
+  return(x)
+}
 
 
-# 2.2. Overall population
+# 2.2. Process date variables  -------------------------------------------------
+# Example:
+# source_file$date <- strptime(
+#   sourcefile$date,
+#   format = "%m/%d%Y" # check this is accurate format
+# )
 
-d1 <- raw %>%
+# Repeat for other date variables such as date of birth
+
+
+
+# 2.3. Age  -------------------------------------------------------------------
+dat1 <- source_file %>%
   dplyr::filter(
-    var == "VALUE" |
-    var  %in% c("VALUE1", "VALUE2")
+    # Keep subjects in study file
+    usubjid %in% study_dat$usubjid
+  ) %>%
+  #... Select subject identifier and dob
+  dplyr::select(
+    usubjid, dob=date_of_birth
+  ) %>%
+  #... Merge into study data
+  dplyr::right_join(
+    study_dat
+  ) %>%
+  dplyr::mutate(
+    age = floor(as.numeric(difftime(
+      dob,
+      index_date,
+      units = "days"
+    )) / 365.25 ),
+    agecat_factor = cut(
+      age,
+      breaks = c(0, 18, 25, 35, 45, 55, 65, 75, Inf),
+      right = FALSE,
+      labels = c(
+        "<18", "18-24", "25-34", "35-44", "45-54",
+        "55-64", "65-74", ">= 75"
+      )
+    ),
+    agecat_character = as.character(agecat_factor)
   )
 
 
-# 2.3. Eligibility criteria --------------------------------------------------
-
-# NOTE: Modify labels as required for project
-
-# 2.3.1 INCLUSION 1: [Minimim pre-index enrollment period] -------------------
-
-# 2.3.2 INCLUSION 2: [Minimim post-index follow-up]        -------------------
-
-# Usually requires >=1 day follow-up
-# If possible, avoid using other follow-up restrictions as this
-# can induce immortality bias
-
-# 2.3.3 INCLUSION 3: [Disease-related diagnosis criteria]  -------------------
-
-# 2.3.4 INCLUSION 4: [DIsease-modifying criteria, ie severity] ---------------
+# 2.4. Sex  -------------------------------------------------------------------
+# Modify as needed
+dat2 <- source_file %>%
+  dplyr::filter(
+    # Keep subjects in study file
+    usubjid %in% study_dat$usubjid
+  ) %>%
+  #... Select subject identifier and dob
+  dplyr::select(
+    usubjid, sex
+  )
 
 
-# 2.3.5  EXCLUSION 1: [No cancer malignnacy within 5 years prior to index] -------------------
+# 2.5. Geography  -------------------------------------------------------------
 
-# 2.3.6  EXCLUSION 2: [Not pregnant or nursing at index or within 30 days prior to index] -------------------
-
-# 2.3.7  EXCLUSION 3: [Describe] -------------------
-
-# 2.4. Index Date --------------------------------------------------
-
-# Index date is the date that a patient first becomes eligible for
-# inclusion in the study cohort, that is they satisfy all eligibility criteria
-
-# Note that for some designs,
-# patients can become eligible at multiple points in time, in which case
-# they may have more than one index date. In such cases, multiple index dates can
-# be extracted and used using a mixed effects model or a random index date
-# may be selected.
-
-# d2 <- raw %>%
-#   dplyr::mutate(
-      # Derive composite indicating patient meets all eligibility criteria
-#     eligible_all = [code block]
-      # Derive index date
-      #index_date = [code block]
-#   )
+# [ADD CODE]
 
 
-# 2.5. Subgroups  --------------------------------------------------
+# 2.6. [Other variables...]  --------------------------------------------------
 
-# 2.4.1 SUBGROUP [Describe]
-
-# 2.4.2 [OPTIONAL FOR MORE SUBGROUPS]
 
 
 #--------------------------------------------------------------------------- -
@@ -178,21 +244,18 @@ d1 <- raw %>%
 
 #  [ ] Unique subject ID (usubjid)
 #  [ ] Index date (index_date)
-#  [ ] Pre-index date of enrollment (pre_enroll_date)
-#  [ ] Post-index end of enrollment date (used for censoring) (post_disenroll_date)
-#  [ ] Inclusion/exclusion flags
-#  [ ] Subgroup flags
+#  [ ] Date of birth
+#  [ ] Age variables including continuous, factors, and strings
+#  [ ] Sex
+#  [ ] Geography as factors and strings
+#  [ ] Other variables [Specify]
 
 
-# dat <-
-# # Left join overall population with eligibility criteria and index dates
-# dplyr::left_join(
-#   d1, d2
-# ) %>%
-# # Left join subpopulation flags
+# dat <- study_dat %>%
+# # Join study data with covariates
 # dplyr::left_join(
 #   purrr::reduce(
-#     list(subgroup1, subgroup2),
+#     list(dat1, dat2, dat3), # Add/Remove as needed
 #     left_join
 #   )
 # )
@@ -212,17 +275,18 @@ colnames(dat)
 #   dplyr::pull(usubjid) %>%
 #   unique %>% length
 
-# How many patients satisfy the first inclusion criteria
-# dat %>%
-#   dplyr::filter(inclusion_flag == "YES") %>% # Or: inclusion_flag == [1 | "Y" | "y"]
-#   dplyr::pull(usubjid) %>%
-#   unique %>% length
+# How many patients with missing data for age
+sum(is.na(dat$age))
 
-# How many missing cells are there for the first inclusion criteria?
-# dat %>%
-#   dplyr::filter(is.na(inclusion_flag) | inclusion_flag=="") %>%
-#   dplyr::pull(usubjid) %>%
-#   unique %>% length
+# Tally counts by age and sex
+
+dat %>%
+  dplyr::group_by(
+    age_cat, sex
+  ) %>%
+  dplyr::tally()
+
+
 
 # Interactive checking can be done using the R package `validate`
 # or other packages
