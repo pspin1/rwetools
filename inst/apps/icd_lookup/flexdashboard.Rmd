@@ -1,0 +1,91 @@
+---
+title: "Untitled"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(DT)
+devtools::load_all(".")
+
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+# Use this to make better:
+#https://community.rstudio.com/t/select-only-filtered-rows-using-select-all-button-that-comes-with-select-extension-in-shinys-dt-package/66749/2
+icd9 <- rwetools::icd9_2014 %>%
+      tibble::as_tibble() %>%
+      dplyr::mutate(
+       vocabulary =  "ICD9CM",
+       version = "2014",
+       code = as.character(code)
+      )
+
+icd10 <- rwetools::icd10_2019 %>%
+      tibble::as_tibble() %>%
+      dplyr::mutate(
+       vocabulary =  "ICD10CM",
+       version = "2019",
+       code = as.character(code)
+      ) 
+
+dat <- dplyr::bind_rows(
+  list(
+    icd9, icd10
+  )
+) 
+
+datatable(
+  dat, 
+  rownames = FALSE,
+  filter = "top",
+  selection = "multiple",
+  extensions = c("Buttons", "Select"),
+  options = 
+    list(
+      select = TRUE,
+      searching = TRUE, 
+      scrollX = TRUE,
+      scrollY = TRUE,
+      dom = "BRSpfrti",
+      buttons = list(
+        list(
+          extend = "copy",
+          text = 'Copy',
+          exportOptions = list(modifier = list(selected = TRUE))
+        ), 
+        list(
+          extend = "csv",
+          text = 'CSV',
+          exportOptions = list(modifier = list(selected = TRUE))
+        ), 
+        list(
+          extend = "excel",
+          text = 'Excel',
+          exportOptions = list(modifier = list(selected = TRUE))
+        ), 
+        list(
+          extend = "pdf",
+          text = 'PDF',
+          exportOptions = list(modifier = list(selected = TRUE))
+        ), 
+        list(
+          extend = "print",
+          text = 'Print',
+          exportOptions = list(modifier = list(selected = TRUE))
+        )
+      )
+    )
+)
+
+```
+
+
