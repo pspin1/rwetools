@@ -1,0 +1,14 @@
+name: icd_lookup
+title: icd_lookup
+username:
+account: paul-spin
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 5106120
+bundleId: 5242136
+url: https://paul-spin.shinyapps.io/icd_lookup/
+when: 1636668091.96779
+lastSyncTime: 1636668091.96779
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: flexdashboard.html|flexdashboard.Rmd

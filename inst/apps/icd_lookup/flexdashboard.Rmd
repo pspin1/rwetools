@@ -16,7 +16,7 @@ devtools::load_all(".")
 Column {data-width=650}
 -----------------------------------------------------------------------
 
-### Chart A
+### Select ICD Codes
 
 ```{r}
 # Use this to make better:
